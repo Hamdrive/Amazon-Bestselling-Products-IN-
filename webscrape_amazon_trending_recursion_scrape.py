@@ -68,4 +68,4 @@ for listurl in link_of_bestsellers_products:
 
 
 
-print("Saved in excel")
+#print("Saved in excel")
