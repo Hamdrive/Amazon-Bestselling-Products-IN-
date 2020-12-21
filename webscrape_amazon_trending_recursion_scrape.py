@@ -11,14 +11,17 @@ import requests
 from requests_html import HTMLSession #since requests does not work on indivivdual amazon products
 import time
 import random
+from datetime import datetime
 
 
 #"""TO RETRIEVE INDIVIDUAL PRODUCT LINK FROM AMAZON BESTSELLER PAGE(KITCHEN)"""
+delay = random.randint(1,10) 
 
-kitchen_bestsellers_url = "https://www.amazon.in/gp/bestsellers/kitchen/ref=zg_bs_pg_"
-link_of_bestsellers_products=[]
+def get_time():
+    now = datetime.now()
 
-delay = random.randint(1,20)
+    current_time = now.strftime("%d/%m/%Y, %H:%M:%S")
+    return(current_time)
 
 def get_page_number(page_soup):
     
@@ -27,7 +30,7 @@ def get_page_number(page_soup):
 
 def scrape_page(number=1):
 
-    user_agent = 'Mozilla/5.0 (Windows NT 10.0; Trident/7.0; rv:11.0) like Gecko'#Mozilla/5.0 (Macintosh; Intel Mac OS X 10_9_3) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/35.0.1916.47 Safari/537.36'
+    user_agent = 'Mozilla/5.0 (Windows NT 10.0; WOW64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/87.0.4280.88 Safari/537.36 OPR/73.0.3856.284' #'Mozilla/5.0 (Windows NT 10.0; Trident/7.0; rv:11.0) like Gecko'
     headers = {'User-Agent': user_agent}
 
     #opening website url and downloading page
@@ -57,6 +60,13 @@ def scrape_page(number=1):
 
     return get_page_number(page_soup)
 
+
+print("\n")
+start_time = get_time()
+print("Start time of scrapper:", start_time)
+kitchen_bestsellers_url = "https://www.amazon.in/gp/bestsellers/kitchen/ref=zg_bs_pg_"
+link_of_bestsellers_products=[]   
+
 page_number = scrape_page()
 
 
@@ -65,20 +75,28 @@ if int(page_number) > 1:
         time.sleep(delay)
         scrape_page(i+1)
 
+print("\n")
+print("The list of bestsellers URLs are obtained")
+print("Moving onto individual product scraping")
+print("\n")
+
 #print(link_of_bestsellers_products)
 
 #"""TO RETRIEVE INDIVIDUAL PRODUCT LINK FROM AMAZON BESTSELLER PAGE(KITCHEN)"""
 
 #using the list of all products links to go to them and retrieve information
-for listurl in link_of_bestsellers_products:
-    product_url = listurl
 
-    df= pd.DataFrame(columns=["Product", "Seller", "Link", "Cost", "Length", "Width", "Height", "Weight"])
+df= pd.DataFrame(columns=["Product", "Seller", "Cost", "Length", "Width", "Height", "Weight", "Link"])
 
-    
+list_of_unavailable_product_links=[]
+
+for listurl in link_of_bestsellers_products: 
 
     def scrape_product(product_url):
-        print('\n')
+
+        global df
+
+        print("\n")
         print(product_url)
         page_content = requests.get(product_url, timeout=(3,20)).text
         
@@ -92,18 +110,51 @@ for listurl in link_of_bestsellers_products:
         time.sleep(delay)
 
         #tree navigation
-        product_name = (page_soup.find("span",{"class":"a-size-large product-title-word-break"})).text.strip()
+        try:
+            product_name = (page_soup.find("span",{"class":"a-size-large product-title-word-break"})).text.strip()
+        except Exception:
+            product_name = None
+            
+
         time.sleep(delay)
-        seller_name = (page_soup.find("a",{"id":"sellerProfileTriggerId"})).text
+
+        try:
+            seller_name = (page_soup.find("a",{"id":"sellerProfileTriggerId"})).text
+        except Exception:
+            seller_name = None
+            
+        
         time.sleep(delay)
+        
         #product price returns as a list, so reading each item in list and joining them to obtain one string
-        product_cost = ''.join((page_soup.find("span",{"class":"a-size-medium a-color-price priceBlockBuyingPriceString"})).text.split()[0:2])
-        product_dimensions_retrival = get_product_dimensions(page_soup)
-        product_length = product_dimensions_retrival[0]
-        product_width = product_dimensions_retrival[1]
-        product_height = product_dimensions_retrival[2]
-        product_weight_retrival = get_product_weight(page_soup)
-        product_weight = product_weight_retrival
+        try:
+            product_cost = ''.join((page_soup.find("span",{"class":"a-size-medium a-color-price priceBlockBuyingPriceString"})).text.split()[0:2])
+        except Exception:
+            product_cost = None
+            
+        
+        time.sleep(delay)
+        
+        try:
+            product_dimensions_retrival = get_product_dimensions(page_soup)
+            product_length = product_dimensions_retrival[0]
+            product_width = product_dimensions_retrival[1]
+            product_height = product_dimensions_retrival[2]
+        except Exception:
+            product_length = None
+            product_width = None
+            product_height = None
+            
+        
+        time.sleep(delay)
+
+        try:
+            product_weight_retrival = get_product_weight(page_soup)
+            product_weight = product_weight_retrival
+        except Exception:
+            product_weight = None
+            
+        
         #product_width = (page_soup.find("span",{"class":"a-list-item"}).span).text
         #product_height = (page_soup.find("span",{"class":"a-list-item"}).span).text
         #product_weight = (page_soup.find("",{"":""}))
@@ -118,17 +169,25 @@ for listurl in link_of_bestsellers_products:
         print("Product Width: {} cm".format(product_width))
         print("Product Height: {} cm".format(product_height))
         print("Product Weight: {}".format(product_weight))
-        print("process_done")
+        print("\n")
+        #print("process_done")
         
+        
+        df = df.append({"Product": product_name, "Seller": seller_name, "Cost": product_cost, "Length": product_length, "Width": product_width, "Height": product_height, "Weight": product_weight, "Link": product_url}, ignore_index=True)
+        print(df)
     
     def get_product_dimensions(page_soup):
+
         time.sleep(delay)
+
         for dimension in (page_soup.find("ul",{"class":"a-unordered-list a-nostyle a-vertical a-spacing-none detail-bullet-list"}).find_all("li", {"span":""})):
             #for bullet in info.findAll("span"):
             #print(info)
             word = 'Item Dimensions LxWxH'
             if word in dimension.select('li > span')[0].text:
+
                 time.sleep(delay)
+
                 dimension_result = dimension.select('li > span')[0].text.split()[4:10:2]
                 #print("dimen list")
                 #print(dimension_result)
@@ -136,23 +195,44 @@ for listurl in link_of_bestsellers_products:
         return(dimension_result)
         
             #if info == 'NavigableString':
-            #    continue
+            #    
             #elif info.span.span.text == 'Product Dimensions':
             #    print(info.span.span.text)
     
     def get_product_weight(page_soup):
+
         time.sleep(delay)
+
         for weight in (page_soup.find("ul",{"class":"a-unordered-list a-nostyle a-vertical a-spacing-none detail-bullet-list"}).find_all("li", {"span":""})):
             word = "Item Weight"
             if word in weight.select('li > span')[0].text:
+
                 time.sleep(delay)
+
                 weight_result = ''.join(weight.select('li > span')[0].text.split()[3:5])
                 #print("weight list")
                 #print(weight_result)
                 
         return(weight_result)
-                
-    scrape_product(product_url)
+    
+    try:
+        product_url = listurl               
+        scrape_product(product_url)
+    except Exception:
+        list_of_unavailable_product_links.append(product_url)
+        
+#Finally convert the dataframe into a readable format for Excel, both spreadsheet and CSV, and set the first index to 1        
+
+#df = df.append({"Product": "product", "Seller": "name", "Cost": "cost", "Length": "length", "Width": "width", "Height": "height", "Weight": "weight", "Link": "url"}, ignore_index=True)
+
+#df.reset_index()
+
+df.to_excel(r'E:\MyPrograms\proj6-webscraping\amazon_scrape\Amazon_Bestsellers_list_Home&Kitchen.xlsx', index = True)
+df.to_csv("Amazon_Bestsellers_list_Home&Kitchen.csv")
+print("Saved in excel")
+end_time = get_time()
+print("Start time of scrapper:", start_time)
+print("End time of scrapper:", end_time)       
 
     #detailBullets_feature_div > ul > li:nth-child(12) > span > span:nth-child(2)
         
