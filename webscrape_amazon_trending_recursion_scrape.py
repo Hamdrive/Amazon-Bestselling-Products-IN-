@@ -15,7 +15,10 @@ from datetime import datetime
 
 
 #"""TO RETRIEVE INDIVIDUAL PRODUCT LINK FROM AMAZON BESTSELLER PAGE(KITCHEN)"""
-delay = random.randint(1,10) 
+delay = random.randint(1,10)
+
+user_agent = 'Mozilla/5.0 (Windows NT 10.0; WOW64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/87.0.4280.88 Safari/537.36 OPR/73.0.3856.284' #'Mozilla/5.0 (Windows NT 10.0; Trident/7.0; rv:11.0) like Gecko'
+headers = {'User-Agent': user_agent}
 
 def get_time():
     now = datetime.now()
@@ -30,10 +33,7 @@ def get_page_number(page_soup):
 
 def scrape_page(number=1):
 
-    user_agent = 'Mozilla/5.0 (Windows NT 10.0; WOW64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/87.0.4280.88 Safari/537.36 OPR/73.0.3856.284' #'Mozilla/5.0 (Windows NT 10.0; Trident/7.0; rv:11.0) like Gecko'
-    headers = {'User-Agent': user_agent}
-
-    #opening website url and downloading page
+        #opening website url and downloading page
     page_html = requests.get((kitchen_bestsellers_url + str(number) + "?ie=UTF8&pg="+str(number)),headers=headers)
     
     time.sleep(delay)
@@ -56,7 +56,7 @@ def scrape_page(number=1):
 
         time.sleep(delay)
 
-        break
+        #break
 
     return get_page_number(page_soup)
 
@@ -98,7 +98,7 @@ for listurl in link_of_bestsellers_products:
 
         print("\n")
         print(product_url)
-        page_content = requests.get(product_url, timeout=(3,20)).text
+        page_content = requests.get(product_url, timeout=None, headers = headers).text
         
         time.sleep(delay)
         
