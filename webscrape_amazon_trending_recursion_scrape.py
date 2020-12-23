@@ -20,20 +20,15 @@ delay = random.randint(1,10)
 user_agent = 'Mozilla/5.0 (Windows NT 10.0; WOW64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/87.0.4280.88 Safari/537.36 OPR/73.0.3856.284' #'Mozilla/5.0 (Windows NT 10.0; Trident/7.0; rv:11.0) like Gecko'
 headers = {'User-Agent': user_agent}
 
+
 def get_time():
     now = datetime.now()
 
     current_time = now.strftime("%d/%m/%Y, %H:%M:%S")
     return(current_time)
 
-def get_page_number(page_soup):
-    
-    no_of_pages = page_soup.find('li', class_='a-normal').find('a').text.split('/')[0] 
-    return(no_of_pages)
-
-def scrape_page(number=1):
-
-        #opening website url and downloading page
+def obtain_HTML(number=1):
+    #opening website url and downloading page
     page_html = requests.get((kitchen_bestsellers_url + str(number) + "?ie=UTF8&pg="+str(number)),headers=headers)
     
     time.sleep(delay)
@@ -41,6 +36,12 @@ def scrape_page(number=1):
     page_content = page_html.text #instead of content used text because it has UTF-8 encoding so rupee symbol will be properly parsed.
     #to parse HTML
     page_soup = soup(page_content,"html.parser")
+
+    return(page_soup)
+
+def scrape_page(page_soup):
+
+    global df
 
     bestseller_item_container = page_soup.find_all("li",{"class":"zg-item-immersion"})
     
@@ -55,10 +56,17 @@ def scrape_page(number=1):
         link_of_bestsellers_products.append(bestseller_product_direct_url)
 
         time.sleep(delay)
+    
+    
+    return (link_of_bestsellers_products)
+        
 
-        #break
-
-    return get_page_number(page_soup)
+def get_page_number(page_soup):
+        
+    no_of_pages = page_soup.find('li',{"class":"a-normal"}).find('a').text
+    print(no_of_pages) 
+    return(no_of_pages)
+    
 
 
 print("\n")
@@ -67,13 +75,15 @@ print("Start time of scrapper:", start_time)
 kitchen_bestsellers_url = "https://www.amazon.in/gp/bestsellers/kitchen/ref=zg_bs_pg_"
 link_of_bestsellers_products=[]   
 
-page_number = scrape_page()
-
+page_HTML = obtain_HTML()
+page_number = get_page_number(page_HTML)
 
 if int(page_number) > 1:
-    for i in range (1, int(page_number)):
+    for i in range (1, int(page_number)+1):
         time.sleep(delay)
-        scrape_page(i+1)
+        page_HTML = obtain_HTML(i)
+        scrape_page(page_HTML)
+
 
 print("\n")
 print("The list of bestsellers URLs are obtained")
