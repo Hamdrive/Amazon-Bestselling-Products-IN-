@@ -1,20 +1,14 @@
-#!/usr/bin/env python
-# -*- coding: utf-8 -*-
-#video link="https://www.youtube.com/watch?v=XQgXKtPSzUI"
-#how to properly show rupee sign in excel: https://stackoverflow.com/questions/6002256/is-it-possible-to-force-excel-recognize-utf-8-csv-files-automatically/6488070#6488070
-#if fresh install of python, pip3 install: bs4, pandas, requests, openpyxl, numpy==1.19.3(most stable version at the time of writing this comment(17/12/20))
 
-from bs4 import BeautifulSoup as soup #to parse HTML
+from bs4 import BeautifulSoup as soup
 import pandas as pd
 import numpy as np
 import requests
-from requests_html import HTMLSession #since requests does not work on indivivdual amazon products
 import time
 import random
 from datetime import datetime
 
 
-#"""TO RETRIEVE INDIVIDUAL PRODUCT LINK FROM AMAZON BESTSELLER PAGE(KITCHEN)"""
+#TO RETRIEVE INDIVIDUAL PRODUCT LINK FROM AMAZON BESTSELLER PAGE(KITCHEN)
 delay = random.randint(1,10)
 
 user_agent = 'Mozilla/5.0 (Windows NT 10.0; WOW64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/87.0.4280.88 Safari/537.36 OPR/73.0.3856.284' #'Mozilla/5.0 (Windows NT 10.0; Trident/7.0; rv:11.0) like Gecko'
@@ -28,20 +22,20 @@ def get_time():
     return(current_time)
 
 def obtain_HTML(number=1):
+    
     #opening website url and downloading page
     page_html = requests.get((kitchen_bestsellers_url + str(number) + "?ie=UTF8&pg="+str(number)),headers=headers)
     
     time.sleep(delay)
     
-    page_content = page_html.text #instead of content used text because it has UTF-8 encoding so rupee symbol will be properly parsed.
-    #to parse HTML
+    page_content = page_html.text #instead of content used text because it has UTF-8 encoding 
+                                  #so rupee symbol will be properly parsed.
+    
     page_soup = soup(page_content,"html.parser")
 
     return(page_soup)
 
 def scrape_page(page_soup):
-
-    global df
 
     bestseller_item_container = page_soup.find_all("li",{"class":"zg-item-immersion"})
     
@@ -51,6 +45,7 @@ def scrape_page(page_soup):
 
         bestseller_product_direct_url = "https://www.amazon.in" + item.a["href"]
 
+        #kept for checking working of program, can be removed
         print(bestseller_product_direct_url)
         
         link_of_bestsellers_products.append(bestseller_product_direct_url)
@@ -68,10 +63,11 @@ def get_page_number(page_soup):
     return(no_of_pages)
     
 
-
+#product link retrival starts from here
 print("\n")
 start_time = get_time()
 print("Start time of scrapper:", start_time)
+all_bestsellers_categories_url = 'https://www.amazon.in/gp/bestsellers/?ref_=nav_cs_bestsellers'
 kitchen_bestsellers_url = "https://www.amazon.in/gp/bestsellers/kitchen/ref=zg_bs_pg_"
 link_of_bestsellers_products=[]   
 
@@ -85,25 +81,25 @@ if int(page_number) > 1:
         scrape_page(page_HTML)
 
 
+#product links collection completion message
 print("\n")
 print("The list of bestsellers URLs are obtained")
 print("Moving onto individual product scraping")
 print("\n")
 
-#print(link_of_bestsellers_products)
 
-#"""TO RETRIEVE INDIVIDUAL PRODUCT LINK FROM AMAZON BESTSELLER PAGE(KITCHEN)"""
-
-#using the list of all products links to go to them and retrieve information
+#TO RETRIEVE INDIVIDUAL PRODUCT LINK FROM AMAZON BESTSELLER PAGE(KITCHEN)
 
 df= pd.DataFrame(columns=["Product", "Seller", "Cost", "Length", "Width", "Height", "Weight", "Link"])
 
 list_of_unavailable_product_links=[]
 
+#scrapping individual products
 for listurl in link_of_bestsellers_products: 
 
     def scrape_product(product_url):
 
+        #allow access to globally defined dataframe while appending information
         global df
 
         print("\n")
@@ -112,14 +108,11 @@ for listurl in link_of_bestsellers_products:
         
         time.sleep(delay)
         
-        #s = HTMLSession()
-        #page_content = s.get(product_url)
-        #page_content.html.render(sleep=0)
         page_soup = soup(page_content,"html.parser")
 
         time.sleep(delay)
 
-        #tree navigation
+        #product tree navigation
         try:
             product_name = (page_soup.find("span",{"class":"a-size-large product-title-word-break"})).text.strip()
         except Exception:
@@ -165,13 +158,6 @@ for listurl in link_of_bestsellers_products:
             product_weight = None
             
         
-        #product_width = (page_soup.find("span",{"class":"a-list-item"}).span).text
-        #product_height = (page_soup.find("span",{"class":"a-list-item"}).span).text
-        #product_weight = (page_soup.find("",{"":""}))
-
-        
-
-        #product_name = page_content.html.xpath('//*[@id="productTitle"]', first=True).text
         print("Product name:", product_name)
         print("Seller name:", seller_name)
         print("Product Cost:", product_cost)
@@ -179,36 +165,29 @@ for listurl in link_of_bestsellers_products:
         print("Product Width: {} cm".format(product_width))
         print("Product Height: {} cm".format(product_height))
         print("Product Weight: {}".format(product_weight))
-        print("\n")
-        #print("process_done")
+        print("\n")  
         
-        
+        #appending obtained info to dataframe
         df = df.append({"Product": product_name, "Seller": seller_name, "Cost": product_cost, "Length": product_length, "Width": product_width, "Height": product_height, "Weight": product_weight, "Link": product_url}, ignore_index=True)
         print(df)
     
+
     def get_product_dimensions(page_soup):
 
         time.sleep(delay)
 
         for dimension in (page_soup.find("ul",{"class":"a-unordered-list a-nostyle a-vertical a-spacing-none detail-bullet-list"}).find_all("li", {"span":""})):
-            #for bullet in info.findAll("span"):
-            #print(info)
+            
             word = 'Item Dimensions LxWxH'
             if word in dimension.select('li > span')[0].text:
 
                 time.sleep(delay)
 
                 dimension_result = dimension.select('li > span')[0].text.split()[4:10:2]
-                #print("dimen list")
-                #print(dimension_result)
-                
+                                
         return(dimension_result)
         
-            #if info == 'NavigableString':
-            #    
-            #elif info.span.span.text == 'Product Dimensions':
-            #    print(info.span.span.text)
-    
+                
     def get_product_weight(page_soup):
 
         time.sleep(delay)
@@ -220,9 +199,7 @@ for listurl in link_of_bestsellers_products:
                 time.sleep(delay)
 
                 weight_result = ''.join(weight.select('li > span')[0].text.split()[3:5])
-                #print("weight list")
-                #print(weight_result)
-                
+                                
         return(weight_result)
     
     try:
@@ -230,23 +207,16 @@ for listurl in link_of_bestsellers_products:
         scrape_product(product_url)
     except Exception:
         list_of_unavailable_product_links.append(product_url)
-        
-#Finally convert the dataframe into a readable format for Excel, both spreadsheet and CSV, and set the first index to 1        
 
-#df = df.append({"Product": "product", "Seller": "name", "Cost": "cost", "Length": "length", "Width": "width", "Height": "height", "Weight": "weight", "Link": "url"}, ignore_index=True)
 
-#df.reset_index()
-
+#Finally convert the dataframe into a readable format for Excel        
 df.to_excel(r'E:\MyPrograms\proj6-webscraping\amazon_scrape\Amazon_Bestsellers_list_Home&Kitchen.xlsx', index = True)
 df.to_csv("Amazon_Bestsellers_list_Home&Kitchen.csv")
 print("Saved in excel")
+
+
+#obtain the start and end time of the program
 end_time = get_time()
 print("Start time of scrapper:", start_time)
 print("End time of scrapper:", end_time)       
 
-    #detailBullets_feature_div > ul > li:nth-child(12) > span > span:nth-child(2)
-        
-
-
-
-#print("Saved in excel")
